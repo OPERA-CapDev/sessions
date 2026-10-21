@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share your findings</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{ --navy:#00125C; --blue:#1A54EB; --teal:#18BAA8; --gold:#FFCC03; --bg:#F4F6FB; --panel:#fff; --fg:#17203A; --muted:#5b6478; --line:#e2e7f1; --display:'Bricolage Grotesque',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.5}
+  header{background:var(--navy);color:#fff;padding:22px 20px 18px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  .tag{display:inline-block;background:rgba(24,186,168,.18);color:var(--teal);font-weight:700;font-size:11px;letter-spacing:.08em;padding:3px 12px;border-radius:20px;margin-bottom:8px}
+  h1{font-family:var(--display);font-weight:800;font-size:26px;margin:0 0 4px;line-height:1.15}
+  .sub{color:#c7d0ee;font-size:13px;margin:0}
+  .teal{height:4px;background:var(--teal)}
+  .prompt{background:#fff8e1;border-left:4px solid var(--gold);padding:12px 16px;border-radius:0 8px 8px 0;margin:18px 0;font-size:14px}
+  form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0;display:grid;gap:10px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px}
+  input,textarea{width:100%;font-family:var(--body);font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg)}
+  textarea{resize:vertical;min-height:46px}
+  input:focus,textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,84,235,.12)}
+  button.post{background:var(--teal);color:#fff;border:0;font-family:var(--display);font-weight:700;font-size:15px;padding:12px 18px;border-radius:9px;cursor:pointer;justify-self:start}
+  button.post:hover{filter:brightness(1.05)}
+  .status{font-size:13px;color:var(--muted);min-height:18px}
+  .count{font-size:13px;color:var(--muted);margin:6px 2px 10px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px;padding-bottom:40px}
+  .postcard{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--teal);border-radius:10px;padding:13px 14px;position:relative;box-shadow:0 1px 3px rgba(10,20,50,.05)}
+  .postcard .who{font-family:var(--display);font-weight:700;font-size:14px;color:var(--navy);margin:0 0 2px}
+  .postcard .when{font-size:11px;color:var(--muted);margin:0 0 8px}
+  .postcard dl{margin:0;display:grid;gap:5px}
+  .postcard dt{font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--teal)}
+  .postcard dd{margin:0 0 3px;font-size:13.5px;color:var(--fg)}
+  .del{position:absolute;top:8px;right:8px;border:1px solid var(--line);background:#fff;color:var(--muted);width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1}
+  .empty{color:var(--muted);font-size:14px;padding:24px 4px}
+  @media(max-width:560px){.row{grid-template-columns:1fr}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="tag">OPERA WEBINAR · DAY 2 · DISCOVERING COPERNICUS MARINE</div>
+    <h1>Share your findings</h1>
+    <p class="sub">Your coastline, your variable, your question — post it so everyone can see.</p>
+  </div>
+</header>
+<div class="teal"></div>
+<div class="wrap">
+  <div class="prompt">Explore a product in the MyOcean viewer, then post your five lines below. Your post appears instantly for the whole group. There are no wrong answers.</div>
+
+  <form id="f" autocomplete="off">
+    <div>
+      <label>Your name (optional)</label>
+      <input id="name" maxlength="40" placeholder="e.g. Ama, Lagos">
+    </div>
+    <div class="row">
+      <div><label>Where</label><input id="where" maxlength="70" placeholder="Country and coastline" required></div>
+      <div><label>Variable</label><input id="variable" maxlength="70" placeholder="What you looked at, and at what depth" required></div>
+    </div>
+    <div><label>Product</label><input id="product" maxlength="60" placeholder="The product name in the viewer"></div>
+    <div><label>Finding</label><textarea id="finding" maxlength="200" placeholder="What you saw, in one sentence" required></textarea></div>
+    <div><label>Question</label><textarea id="question" maxlength="200" placeholder="One thing you would like to know or check"></textarea></div>
+    <button class="post" type="submit">Post to the board</button>
+    <div class="status" id="status"></div>
+  </form>
+
+  <div class="count" id="count"></div>
+  <div class="grid" id="grid"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+(() => {
+  const CONFIG = {
+      apiKey: "AIzaSyCivtQ9DP8EpVw1oZyIH_1FQ6et9subDXM",
+      authDomain: "opera-webinars.firebaseapp.com",
+      databaseURL: "https://opera-webinars-default-rtdb.firebaseio.com",
+      projectId: "opera-webinars",
+      storageBucket: "opera-webinars.firebasestorage.app",
+      messagingSenderId: "582276365578",
+      appId: "1:582276365578:web:89688ceb06c6bc87334ef3"
+    };
+  const ROOM = "board-en-day2";
+  const L = { posting:"Posting…", posted:"Posted — thank you!", empty:"No posts yet — be the first to share.", err:"Could not connect. Check your internet and reload.", del:"Delete this post", anon:"Anonymous", count:"posts" };
+  const HOST = location.hash.toLowerCase().includes('host');
+  const $ = s => document.querySelector(s);
+  let ref = null;
+  try {
+    firebase.initializeApp(CONFIG);
+    ref = firebase.database().ref('rooms/' + ROOM + '/posts');
+    console.log('[OPERA board] connected, room:', ROOM);
+  } catch (e) { console.error('[OPERA board] init failed', e); $('#status').textContent = L.err; }
+
+  const esc = s => (s == null ? '' : String(s));
+  function fmtTime(ts){ try { return new Date(ts).toLocaleString(); } catch(e){ return ''; } }
+
+  $('#f').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!ref) { $('#status').textContent = L.err; return; }
+    const post = {
+      name: $('#name').value.trim(),
+      where: $('#where').value.trim(),
+      variable: $('#variable').value.trim(),
+      product: $('#product').value.trim(),
+      finding: $('#finding').value.trim(),
+      question: $('#question').value.trim(),
+      ts: Date.now()
+    };
+    if (!post.where && !post.finding) return;
+    $('#status').textContent = L.posting;
+    ref.push(post).then(() => {
+      $('#status').textContent = L.posted;
+      ['where','variable','product','finding','question'].forEach(id => $('#'+id).value='');
+      $('#where').focus();
+      setTimeout(()=>{ $('#status').textContent=''; }, 2500);
+    }).catch(err => { console.error(err); $('#status').textContent = L.err; });
+  });
+
+  function field(dl, label, val){ if(!val) return; const dt=document.createElement('dt'); dt.textContent=label; const dd=document.createElement('dd'); dd.textContent=val; dl.append(dt,dd); }
+
+  if (ref) ref.on('value', snap => {
+    const v = snap.val() || {};
+    const items = Object.entries(v).map(([k,p]) => ({k, ...p})).sort((a,b) => (b.ts||0)-(a.ts||0));
+    const grid = $('#grid'); grid.innerHTML = '';
+    $('#count').textContent = items.length ? (items.length + ' ' + L.count) : '';
+    if (!items.length) { const d=document.createElement('div'); d.className='empty'; d.textContent=L.empty; grid.appendChild(d); return; }
+    items.forEach(p => {
+      const c = document.createElement('div'); c.className='postcard';
+      const who = document.createElement('p'); who.className='who'; who.textContent = p.name || L.anon; c.appendChild(who);
+      const when = document.createElement('p'); when.className='when'; when.textContent = fmtTime(p.ts); c.appendChild(when);
+      const dl = document.createElement('dl');
+      field(dl, "Where", p.where);
+      field(dl, "Variable", p.variable);
+      field(dl, "Product", p.product);
+      field(dl, "Finding", p.finding);
+      field(dl, "Question", p.question);
+      c.appendChild(dl);
+      if (HOST) { const x=document.createElement('button'); x.className='del'; x.textContent='×'; x.title=L.del; x.onclick=()=>{ if(confirm(L.del+'?')) ref.child(p.k).remove(); }; c.appendChild(x); }
+      grid.appendChild(c);
+    });
+  });
+})();
+</script>
+</body>
+</html>
