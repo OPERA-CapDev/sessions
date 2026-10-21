@@ -499,6 +499,27 @@ footer { font-size: 12.5px; color: var(--muted) }
   <footer>Répondez dans le chat ou sur Padlet : vos réponses apparaissent sur cette page au fil de la séance.</footer>
 </div>
 
+<!-- Firebase (live shared counters). Loaded from Google's CDN. -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
+<script>
+  /* ============================================================
+     EDIT THIS BLOCK -> paste your Firebase project config below.
+     Firebase console -> Project settings -> "Your apps"
+     -> SDK setup and configuration -> Config.
+     databaseURL is REQUIRED for the live counters.
+     ROOM must be UNIQUE per session/group so groups don't mix.
+     Leave databaseURL empty to run offline (presenter mode).
+     ============================================================ */
+  const FIREBASE_CONFIG = {
+    apiKey: "PASTE_API_KEY",
+    authDomain: "PASTE_PROJECT.firebaseapp.com",
+    databaseURL: "",
+    projectId: "PASTE_PROJECT",
+    appId: "PASTE_APP_ID"
+  };
+  const ROOM = "webinar-fr-day1";
+</script>
 <script>
 (() => {
   // ---------- geography (coarse outline, enough for a schematic map) ----------
@@ -570,6 +591,42 @@ footer { font-size: 12.5px; color: var(--muted) }
   try { const raw = localStorage.getItem(KEY); if (raw) S = Object.assign(blank(), JSON.parse(raw)); } catch (e) {}
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} };
 
+  // ---------- shared live sync (Firebase) ----------
+  let sync = null;
+  (function initSync(){
+    try {
+      if (typeof FIREBASE_CONFIG === 'undefined' || !FIREBASE_CONFIG || !FIREBASE_CONFIG.databaseURL) return;
+      if (typeof firebase === 'undefined') { console.warn('[OPERA] Firebase SDK not loaded'); return; }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      const db = firebase.database();
+      const roomId = (typeof ROOM !== 'undefined' && ROOM) ? ROOM : 'default';
+      const room = db.ref('rooms/' + roomId);
+      const enc = s => String(s).replace(/[.#$/\[\]]/g, c => '~' + c.charCodeAt(0) + '~');
+      const dec = s => String(s).replace(/~(\d+)~/g, (_, n) => String.fromCharCode(+n));
+      sync = {
+        incHere:  (name, d) => room.child('here/' + enc(name)).transaction(v => { v = (v || 0) + d; return v > 0 ? v : null; }),
+        incOut:   (d)       => room.child('out').transaction(v => Math.max(0, (v || 0) + d)),
+        incTally: (id, d)   => room.child('tally/' + id).transaction(v => Math.max(0, (v || 0) + d)),
+        pushTag:  (list, t) => room.child(list).push(String(t)),
+        removeTag:(list, k) => { if (k) room.child(list + '/' + k).remove(); },
+        resetHere: ()       => { room.child('here').remove(); room.child('out').remove(); },
+        resetChain:()       => { room.child('tally').remove(); room.child('users').remove(); room.child('weaktags').remove(); },
+        start: () => room.on('value', snap => {
+          const v = snap.val() || {};
+          S.here = {}; const h = v.here || {}; for (const k in h) S.here[dec(k)] = h[k];
+          S.out = v.out || 0;
+          S.tally = v.tally || {};
+          const u = v.users || {};     S.users    = Object.values(u); S._usersK = Object.keys(u);
+          const w = v.weaktags || {};  S.weakTags = Object.values(w); S._weakK  = Object.keys(w);
+          try { drawHere(); } catch (e) {}
+          try { drawChain(); } catch (e) {}
+        })
+      };
+      window.__operaSync = sync;
+      console.log('[OPERA] Live sync ON, room:', roomId);
+    } catch (e) { console.error('[OPERA] Firebase init failed:', e); sync = null; }
+  })();
+
   const $ = s => document.querySelector(s);
   const NS = 'http://www.w3.org/2000/svg';
   const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
@@ -596,7 +653,7 @@ footer { font-size: 12.5px; color: var(--muted) }
       el('circle', { cx: x, cy: y, r, class: 'dot' }, g);
       if (n) { const tn = el('text', { x, y: y + 4, 'text-anchor': 'middle', class: 'n' }, g); tn.textContent = n; }
       if (n) { const tl = el('text', { x: x + r + 4, y: y + 4 }, g); tl.textContent = name; }
-      const add = d => { S.here[name] = Math.max(0, (S.here[name] || 0) + d); if (!S.here[name]) delete S.here[name]; save(); drawHere(); };
+      const add = d => { if (sync) { sync.incHere(name, d); return; } S.here[name] = Math.max(0, (S.here[name] || 0) + d); if (!S.here[name]) delete S.here[name]; save(); drawHere(); };
       g.addEventListener('click', () => add(1));
       g.addEventListener('contextmenu', e => { e.preventDefault(); add(-1); });
       g.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); add(1); } if (e.key === '-' || e.key === 'Backspace') add(-1); });
@@ -614,15 +671,15 @@ footer { font-size: 12.5px; color: var(--muted) }
       const a = document.createElement('span'); a.textContent = name;
       const b = document.createElement('span'); b.textContent = n + ' ';
       const m = document.createElement('button'); m.className = 'btn quiet'; m.textContent = '−'; m.setAttribute('aria-label', 'Retirer un pour ' + name);
-      m.style.padding = '0 6px'; m.onclick = () => { S.here[name]--; if (!S.here[name]) delete S.here[name]; save(); drawHere(); };
+      m.style.padding = '0 6px'; m.onclick = () => { if (sync) { sync.incHere(name, -1); return; } S.here[name]--; if (!S.here[name]) delete S.here[name]; save(); drawHere(); };
       b.appendChild(m); d.append(a, b); list.appendChild(d);
     });
   }
-  $('#outPlus').onclick = () => { S.out++; save(); drawHere(); };
-  $('#outMinus').onclick = () => { S.out = Math.max(0, S.out - 1); save(); drawHere(); };
+  $('#outPlus').onclick = () => { if (sync) { sync.incOut(1); return; } S.out++; save(); drawHere(); };
+  $('#outMinus').onclick = () => { if (sync) { sync.incOut(-1); return; } S.out = Math.max(0, S.out - 1); save(); drawHere(); };
   $('#resetHere').onclick = e => {
     const b = e.currentTarget;
-    if (b.dataset.armed) { S.here = {}; S.out = 0; save(); drawHere(); b.textContent = 'Réinitialiser la carte'; delete b.dataset.armed; }
+    if (b.dataset.armed) { if (sync) { sync.resetHere(); } else { S.here = {}; S.out = 0; save(); drawHere(); } b.textContent = 'Réinitialiser la carte'; delete b.dataset.armed; }
     else { b.dataset.armed = 1; b.textContent = 'Cliquez encore pour confirmer'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Réinitialiser la carte'; }, 3000); }
   };
 
@@ -657,8 +714,8 @@ footer { font-size: 12.5px; color: var(--muted) }
       t.innerHTML = '<button aria-label="Retirer un">−</button><b></b><button aria-label="Ajouter un">+</button>';
       t.querySelector('b').textContent = n;
       const [mi, pl] = t.querySelectorAll('button');
-      mi.onclick = () => { S.tally[c.id] = Math.max(0, n - 1); save(); drawChain(); };
-      pl.onclick = () => { S.tally[c.id] = n + 1; save(); drawChain(); };
+      mi.onclick = () => { if (sync) { sync.incTally(c.id, -1); return; } S.tally[c.id] = Math.max(0, n - 1); save(); drawChain(); };
+      pl.onclick = () => { if (sync) { sync.incTally(c.id, 1); return; } S.tally[c.id] = n + 1; save(); drawChain(); };
       d.appendChild(t);
       if (i < CHAIN.length - 1) { const a = document.createElement('span'); a.className = 'arrow'; a.textContent = '→'; a.setAttribute('aria-hidden', 'true'); d.appendChild(a); }
       box.appendChild(d);
@@ -676,28 +733,29 @@ footer { font-size: 12.5px; color: var(--muted) }
     }
     $('#chainTotal').textContent = Object.values(S.tally).reduce((s, n) => s + n, 0) + ' réponses';
     $('#loop').hidden = !S.loop; $('#loopBtn').textContent = S.loop ? 'Masquer la boucle vertueuse' : 'Afficher la boucle vertueuse';
-    drawChips('#userChips', S.users); drawChips('#weakChips', S.weakTags);
+    drawChips('#userChips', S.users, 'users', S._usersK); drawChips('#weakChips', S.weakTags, 'weaktags', S._weakK);
   }
-  function drawChips(sel, arr) {
+  function drawChips(sel, arr, listName, keys) {
     const box = $(sel); box.innerHTML = '';
     if (!arr.length) { box.innerHTML = '<span class="hint">Rien d’ajouté pour l’instant.</span>'; return; }
     arr.forEach((txt, i) => {
       const s = document.createElement('span'); s.textContent = txt;
       const x = document.createElement('button'); x.textContent = '×'; x.setAttribute('aria-label', 'Retirer ' + txt);
-      x.onclick = () => { arr.splice(i, 1); save(); drawChain(); };
+      x.onclick = () => { if (sync && keys) { sync.removeTag(listName, keys[i]); return; } arr.splice(i, 1); save(); drawChain(); };
       s.appendChild(x); box.appendChild(s);
     });
   }
-  const addTag = (formSel, inSel, arr) => $(formSel).addEventListener('submit', e => {
-    e.preventDefault(); const v = $(inSel).value.trim(); if (!v) return; arr().push(v); $(inSel).value = ''; save(); drawChain();
+  const addTag = (formSel, inSel, listName, arr) => $(formSel).addEventListener('submit', e => {
+    e.preventDefault(); const v = $(inSel).value.trim(); if (!v) return; $(inSel).value = '';
+    if (sync) { sync.pushTag(listName, v); return; } arr().push(v); save(); drawChain();
   });
-  addTag('#userForm', '#userIn', () => S.users);
-  addTag('#weakForm', '#weakIn', () => S.weakTags);
+  addTag('#userForm', '#userIn', 'users', () => S.users);
+  addTag('#weakForm', '#weakIn', 'weaktags', () => S.weakTags);
   $('#loopBtn').onclick = () => { S.loop = !S.loop; save(); drawChain(); };
   $('#healBtn').onclick = () => { S.weak = null; S.weakInput = null; save(); drawChain(); };
   $('#resetChain').onclick = e => {
     const b = e.currentTarget;
-    if (b.dataset.armed) { S.tally = {}; S.users = []; S.weakTags = []; save(); drawChain(); b.textContent = 'Réinitialiser les décomptes et les étiquettes'; delete b.dataset.armed; }
+    if (b.dataset.armed) { if (sync) { sync.resetChain(); } else { S.tally = {}; S.users = []; S.weakTags = []; save(); drawChain(); } b.textContent = 'Réinitialiser les décomptes et les étiquettes'; delete b.dataset.armed; }
     else { b.dataset.armed = 1; b.textContent = 'Cliquez encore pour confirmer'; setTimeout(() => { delete b.dataset.armed; b.textContent = 'Réinitialiser les décomptes et les étiquettes'; }, 3000); }
   };
 
@@ -935,6 +993,7 @@ footer { font-size: 12.5px; color: var(--muted) }
   setInterval(drawAgenda, 60000);
 
   drawHere(); drawChain(); drawSvc(); drawPicture(); drawAgenda(); drawApps(); drawCM(); drawActs();
+  if (sync) sync.start();
   show((location.hash || '#welcome').slice(1));
 })();
 </script>
