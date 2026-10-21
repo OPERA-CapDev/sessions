@@ -35,6 +35,9 @@
   .postcard dd{margin:0 0 3px;font-size:13.5px;color:var(--fg)}
   .del{position:absolute;top:8px;right:8px;border:1px solid var(--line);background:#fff;color:var(--muted);width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:14px;line-height:1}
   .empty{color:var(--muted);font-size:14px;padding:24px 4px}
+  .hosttools{display:none;align-items:center;gap:12px;flex-wrap:wrap;background:#fff3f3;border:1px solid #f3c9c9;color:#b00000;padding:9px 13px;border-radius:9px;margin:6px 0 2px;font-size:13px;font-weight:600}
+  .hosttools button{background:#b00000;color:#fff;border:0;padding:7px 13px;border-radius:7px;cursor:pointer;font-weight:700;font-family:var(--body)}
+  .hosttools button:hover{filter:brightness(1.08)}
   @media(max-width:560px){.row{grid-template-columns:1fr}h1{font-size:22px}}
 </style>
 </head>
@@ -66,6 +69,7 @@
     <div class="status" id="status"></div>
   </form>
 
+  <div class="hosttools" id="hosttools"><span>Mode présentateur — vous seul voyez ces boutons</span><button id="clearAll" type="button">Tout effacer</button></div>
   <div class="count" id="count"></div>
   <div class="grid" id="grid"></div>
 </div>
@@ -84,8 +88,9 @@
       appId: "1:582276365578:web:89688ceb06c6bc87334ef3"
     };
   const ROOM = "board-fr-day2";
-  const L = { posting:"Publication…", posted:"Publié — merci !", empty:"Aucune publication pour l'instant — soyez le premier.", err:"Connexion impossible. Vérifiez votre connexion et rechargez.", del:"Supprimer cette publication", anon:"Anonyme", count:"publications" };
+  const L = { posting:"Publication…", posted:"Publié — merci !", empty:"Aucune publication pour l'instant — soyez le premier.", err:"Connexion impossible. Vérifiez votre connexion et rechargez.", del:"Supprimer cette publication", anon:"Anonyme", count:"publications", clearConfirm:"Supprimer TOUTES les publications de ce tableau ? Action irréversible." };
   const HOST = location.hash.toLowerCase().includes('host');
+  const CID = (function(){ try { let c = localStorage.getItem('opera-cid'); if(!c){ c = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10); localStorage.setItem('opera-cid', c); } return c; } catch(e){ return 'c-' + Math.random().toString(36).slice(2,10); } })();
   const $ = s => document.querySelector(s);
   let ref = null;
   try {
@@ -93,6 +98,11 @@
     ref = firebase.database().ref('rooms/' + ROOM + '/posts');
     console.log('[OPERA board] connected, room:', ROOM);
   } catch (e) { console.error('[OPERA board] init failed', e); $('#status').textContent = L.err; }
+
+  if (HOST) {
+    const ht = $('#hosttools'); if (ht) ht.style.display = 'flex';
+    const ca = $('#clearAll'); if (ca) ca.onclick = () => { if (ref && confirm(L.clearConfirm)) ref.remove(); };
+  }
 
   const esc = s => (s == null ? '' : String(s));
   function fmtTime(ts){ try { return new Date(ts).toLocaleString(); } catch(e){ return ''; } }
@@ -107,6 +117,7 @@
       product: $('#product').value.trim(),
       finding: $('#finding').value.trim(),
       question: $('#question').value.trim(),
+      cid: CID,
       ts: Date.now()
     };
     if (!post.where && !post.finding) return;
@@ -138,7 +149,7 @@
       field(dl, "Résultat", p.finding);
       field(dl, "Question", p.question);
       c.appendChild(dl);
-      if (HOST) { const x=document.createElement('button'); x.className='del'; x.textContent='×'; x.title=L.del; x.onclick=()=>{ if(confirm(L.del+'?')) ref.child(p.k).remove(); }; c.appendChild(x); }
+      if (HOST || (p.cid && p.cid === CID)) { const x=document.createElement('button'); x.className='del'; x.textContent='×'; x.title=L.del; x.onclick=()=>{ if(confirm(L.del+'?')) ref.child(p.k).remove(); }; c.appendChild(x); }
       grid.appendChild(c);
     });
   });
