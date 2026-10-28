@@ -154,6 +154,7 @@
       <div><label for="first">First name</label><input id="first" maxlength="40" autocomplete="given-name"></div>
       <div><label for="last">Last name</label><input id="last" maxlength="40" autocomplete="family-name"></div>
     </div>
+    <div><label for="email">Email</label><input id="email" type="email" maxlength="80" autocomplete="email" placeholder="you@example.com"></div>
     <div class="row">
       <div><label for="gender">Gender</label><select id="gender"><option value="" disabled selected>Select…</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Prefer not to say</option></select></div>
       <div><label for="country">Country (optional)</label><input id="country" maxlength="40" placeholder="e.g. Ghana" autocomplete="country-name"></div>
@@ -209,7 +210,7 @@
       "appId": "1:582276365578:web:89688ceb06c6bc87334ef3"
 };
   const ROOM = "groups-en-workshop";
-  const L = {"rank_words": ["1st choice", "2nd choice"], "choose": "Choose", "remove": "Remove", "notyet": "not chosen yet", "send": "Send my choice", "update": "Update my choice", "sending": "Sending…", "sent": "Thank you — your choice is recorded. You can change it until the organisers close the choice.", "already": "Your choice is recorded:", "change": "You can change it below and send again.", "need_name": "Please write your first and last name.", "need_gender": "Please select your gender.", "need_rank": "Please choose your first and second regions.", "err": "Could not connect. Check your internet and reload the page.", "people": "participants", "firsts": "first choices", "h_cols": ["#", "Name", "Gender", "Country", "1st", "2nd", "Why", "Time", ""], "h_points": "points (2 / 1)", "h_del": "Delete this choice?", "h_none": "No choices yet.", "h_close": "Close the choice", "h_open": "Reopen the choice", "h_got": ["got 1st choice", "got 2nd choice"], "h_got_other": "assigned to balance groups", "h_clear_confirm": "Delete ALL choices? This cannot be undone."};
+  const L = {"rank_words": ["1st choice", "2nd choice"], "choose": "Choose", "remove": "Remove", "notyet": "not chosen yet", "send": "Send my choice", "update": "Update my choice", "sending": "Sending…", "sent": "Thank you — your choice is recorded. You can change it until the organisers close the choice.", "already": "Your choice is recorded:", "change": "You can change it below and send again.", "need_name": "Please write your first and last name.", "need_gender": "Please select your gender.", "need_email": "Please enter a valid email address.", "need_rank": "Please choose your first and second regions.", "err": "Could not connect. Check your internet and reload the page.", "people": "participants", "firsts": "first choices", "h_cols": ["#", "Name", "Email", "Gender", "Country", "1st", "2nd", "Why", "Time", ""], "h_points": "points (2 / 1)", "h_del": "Delete this choice?", "h_none": "No choices yet.", "h_close": "Close the choice", "h_open": "Reopen the choice", "h_got": ["got 1st choice", "got 2nd choice"], "h_got_other": "assigned to balance groups", "h_clear_confirm": "Delete ALL choices? This cannot be undone."};
   const AREAS = {"1": {"name": "Mauritania / Senegal", "color": "#D9473A"}, "2": {"name": "Gulf of Guinea — east", "color": "#1F9D57"}, "3": {"name": "Agulhas", "color": "#7E44A8"}};            // number -> {name, color}
   const KEYS = ['1', '2', '3'];
   const HOST = location.hash.toLowerCase().includes('host');
@@ -251,7 +252,7 @@
     settings = db.ref('rooms/' + ROOM + '/settings');
   } catch (e) { console.error('[OPERA groups] init failed', e); $('#status').textContent = L.err; $('#status').className = 'status bad'; }
 
-  try { const f=localStorage.getItem('opera-first'); if(f) $('#first').value=f; const l=localStorage.getItem('opera-last'); if(l) $('#last').value=l; const g=localStorage.getItem('opera-gender'); if(g) $('#gender').value=g; } catch(e){}
+  try { const f=localStorage.getItem('opera-first'); if(f) $('#first').value=f; const l=localStorage.getItem('opera-last'); if(l) $('#last').value=l; const g=localStorage.getItem('opera-gender'); if(g) $('#gender').value=g; const em=localStorage.getItem('opera-email'); if(em) $('#email').value=em; } catch(e){}
   let typing = null;                   // update "your choice is recorded" while the name is typed (not on blur: that would move the button mid-click)
   ['#first','#last'].forEach(s => $(s).addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(showMine, 300); }));
 
@@ -260,15 +261,16 @@
     const st = $('#status');
     if (closed) return;
     if (!choices) { st.textContent = L.err; st.className = 'status bad'; return; }
-    const firstName = $('#first').value.trim(), lastName = $('#last').value.trim(), gender = $('#gender').value;
+    const firstName = $('#first').value.trim(), lastName = $('#last').value.trim(), gender = $('#gender').value, email = $('#email').value.trim();
     const name = (firstName + ' ' + lastName).trim();
     if (rank.length < 2) { st.textContent = L.need_rank; st.className = 'status bad'; return; }
     if (!firstName || !lastName) { st.textContent = L.need_name; st.className = 'status bad'; $('#first').focus(); return; }
     if (!gender) { st.textContent = L.need_gender; st.className = 'status bad'; $('#gender').focus(); return; }
-    try { localStorage.setItem('opera-first', firstName); localStorage.setItem('opera-last', lastName); localStorage.setItem('opera-gender', gender); } catch(e){}
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { st.textContent = L.need_email; st.className = 'status bad'; $('#email').focus(); return; }
+    try { localStorage.setItem('opera-first', firstName); localStorage.setItem('opera-last', lastName); localStorage.setItem('opera-gender', gender); localStorage.setItem('opera-email', email); } catch(e){}
     st.textContent = L.sending; st.className = 'status';
     const key = CID + '_' + name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
-    choices.child(key).set({ name, firstName, lastName, gender, cid: CID, country: $('#country').value.trim(), why: $('#why').value.trim(),
+    choices.child(key).set({ name, firstName, lastName, gender, email, cid: CID, country: $('#country').value.trim(), why: $('#why').value.trim(),
                              first: rank[0], second: rank[1], ts: firebase.database.ServerValue.TIMESTAMP })
       .then(() => { st.textContent = L.sent; st.className = 'status ok'; })
       .catch(err => { console.error(err); st.textContent = L.err; st.className = 'status bad'; });
@@ -284,6 +286,7 @@
     if (!$('#first').value && m.firstName) $('#first').value = m.firstName;
     if (!$('#last').value && m.lastName) $('#last').value = m.lastName;
     if (!$('#gender').value && m.gender) $('#gender').value = m.gender;
+    if (!$('#email').value && m.email) $('#email').value = m.email;
     if (!rank.length) { setRank([m.first, m.second].filter(Boolean)); if (!$('#country').value) $('#country').value = m.country || ''; if (!$('#why').value) $('#why').value = m.why || ''; }
   }
 
@@ -326,7 +329,7 @@
     else {
       let t = '<tr>' + L.h_cols.map(c => '<th>' + c + '</th>').join('') + '</tr>';
       items.forEach((x, i) => {
-        t += '<tr><td>' + (i + 1) + '</td><td>' + txt(x.name) + '</td><td>' + txt(x.gender) + '</td><td>' + txt(x.country) + '</td>' +
+        t += '<tr><td>' + (i + 1) + '</td><td>' + txt(x.name) + '</td><td>' + txt(x.email) + '</td><td>' + txt(x.gender) + '</td><td>' + txt(x.country) + '</td>' +
              ['first', 'second'].map(p => '<td>' + dot(x[p]) + x[p] + '</td>').join('') +
              '<td>' + txt(x.why) + '</td><td>' + txt(fmt(x.ts)) + '</td><td><button data-k="' + x.k + '" title="' + L.h_del + '">×</button></td></tr>';
       });
@@ -360,8 +363,8 @@
     const groups = propose(), assigned = {};
     KEYS.forEach(k => groups[k].forEach(({ x }) => assigned[x.k] = k));
     const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
-    const rows = [['order', 'first_name', 'last_name', 'gender', 'country', 'first', 'second', 'why', 'time', 'proposed_group']];
-    list().forEach((x, i) => rows.push([i + 1, x.firstName || '', x.lastName || '', x.gender || '', x.country, x.first + ' ' + AREAS[x.first].name, x.second + ' ' + AREAS[x.second].name,
+    const rows = [['order', 'first_name', 'last_name', 'email', 'gender', 'country', 'first', 'second', 'why', 'time', 'proposed_group']];
+    list().forEach((x, i) => rows.push([i + 1, x.firstName || '', x.lastName || '', x.email || '', x.gender || '', x.country, x.first + ' ' + AREAS[x.first].name, x.second + ' ' + AREAS[x.second].name,
                                          x.why, fmt(x.ts), assigned[x.k] + ' ' + AREAS[assigned[x.k]].name]));
     const blob = new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ROOM + '.csv'; a.click();
