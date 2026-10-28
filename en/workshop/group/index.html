@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose your study area</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{ --navy:#00125C; --blue:#1A54EB; --teal:#18BAA8; --gold:#FFCC03; --bg:#F4F6FB; --panel:#fff; --fg:#17203A; --muted:#5b6478; --line:#e2e7f1;
+         --sea:#DCEBF5; --land:#EFE6D2; --coast:#9AA5B8;
+         --display:'Bricolage Grotesque',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.5}
+  header{background:var(--navy);color:#fff;padding:22px 0 18px}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+  .tag{display:inline-block;background:rgba(24,186,168,.18);color:var(--teal);font-weight:700;font-size:11px;letter-spacing:.08em;padding:3px 12px;border-radius:20px;margin-bottom:8px}
+  h1{font-family:var(--display);font-weight:800;font-size:28px;margin:0 0 4px;line-height:1.15}
+  .sub{color:#c7d0ee;font-size:14px;margin:0;max-width:760px}
+  .teal{height:4px;background:var(--teal)}
+  .prompt{background:#fff8e1;border-left:4px solid var(--gold);padding:12px 16px;border-radius:0 8px 8px 0;margin:18px 0;font-size:14px}
+  .top{display:grid;grid-template-columns:minmax(260px,330px) 1fr;gap:18px;align-items:start}
+  .map{width:100%;height:auto;border-radius:12px;border:1px solid var(--line);display:block;background:var(--sea)}
+  .mbox{cursor:pointer}
+  .mbox:hover rect{fill-opacity:.45}
+  .mbox.on rect{fill-opacity:.6;stroke-width:3.4}
+  .mnum{font:700 13px var(--body);fill:#fff;pointer-events:none}
+  .areas{display:grid;gap:12px}
+  .area{background:var(--panel);border:1px solid var(--line);border-left:6px solid var(--c);border-radius:12px;padding:14px 16px 14px;position:relative;transition:box-shadow .15s, border-color .15s}
+  .area.ranked{box-shadow:0 0 0 3px color-mix(in srgb, var(--c) 35%, transparent)}
+  .ahead{display:flex;gap:12px;align-items:flex-start}
+  .num{flex:none;width:30px;height:30px;border-radius:50%;background:var(--c);color:#fff;font-weight:700;display:grid;place-items:center;font-size:15px}
+  .area h3{font-family:var(--display);font-weight:800;font-size:19px;margin:0;line-height:1.2;color:var(--navy)}
+  .short{margin:1px 0 0;color:var(--muted);font-size:13px;font-weight:600}
+  .rankbadge{margin-left:auto;flex:none;font-family:var(--display);font-weight:800;font-size:13px;background:var(--c);color:#fff;padding:4px 11px;border-radius:20px;display:none;white-space:nowrap}
+  .area.ranked .rankbadge{display:inline-block}
+  .hook{margin:8px 0 6px;font-size:14.5px;font-weight:500}
+  .area ul{margin:0 0 6px;padding-left:18px;font-size:13.5px;color:#2b3550}
+  .area li{margin:2px 0}
+  .places{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+  .pick{font-family:var(--display);font-weight:700;font-size:14px;border:2px solid var(--c);color:var(--c);background:#fff;padding:7px 16px;border-radius:9px;cursor:pointer}
+  .pick:hover{background:color-mix(in srgb, var(--c) 10%, #fff)}
+  .area.ranked .pick{background:var(--c);color:#fff}
+  .pick:disabled{opacity:.45;cursor:not-allowed}
+  .summary{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-top:14px}
+  .summary h4,.panel h4{margin:0 0 8px;font-family:var(--display);font-size:15px;color:var(--navy)}
+  .slots{display:grid;gap:6px}
+  .slot{display:flex;gap:10px;align-items:center;font-size:14px}
+  .slot .k{font-weight:700;color:var(--muted);width:92px;flex:none}
+  .slot .v{font-weight:600}
+  .slot .v.none{color:#9aa3b5;font-weight:400;font-style:italic}
+  .reset{margin-top:8px;background:none;border:0;color:var(--blue);font-family:var(--body);font-size:13px;cursor:pointer;padding:0;text-decoration:underline}
+  form{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:16px 0;display:grid;gap:10px}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  label{font-size:12px;font-weight:600;color:var(--muted);display:block;margin-bottom:3px}
+  input,select{width:100%;font-family:var(--body);font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--fg)}
+  input,select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,84,235,.12)}
+  button.send{background:var(--teal);color:#fff;border:0;font-family:var(--display);font-weight:700;font-size:15px;padding:12px 18px;border-radius:9px;cursor:pointer;justify-self:start;min-width:250px;text-align:center}
+  button.send:hover{filter:brightness(1.05)}
+  button.send:disabled{opacity:.5;cursor:not-allowed}
+  .status{font-size:13.5px;min-height:18px;color:var(--muted)}
+  .status.ok{color:#0b7d6f;font-weight:600}
+  .status.bad{color:#b00000;font-weight:600}
+  .mine{background:#e8f7f4;border:1px solid #bfe7e0;border-radius:10px;padding:10px 14px;font-size:14px;margin:12px 0 0;display:none}
+  .closedmsg{display:none;background:#fff3f3;border:1px solid #f3c9c9;color:#b00000;padding:12px 14px;border-radius:10px;font-weight:600;margin:12px 0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:16px 0}
+  .bars{display:grid;gap:9px}
+  .bar{display:grid;grid-template-columns:minmax(120px,190px) 1fr 44px;gap:10px;align-items:center;font-size:13.5px}
+  .bar .track{height:14px;background:#edf0f6;border-radius:8px;overflow:hidden}
+  .bar .fill{height:100%;border-radius:8px;width:0;transition:width .4s}
+  .bar .n{font-weight:700;text-align:right}
+  .note{font-size:12.5px;color:var(--muted);margin:10px 0 0}
+  .hostzone{display:none;margin:22px 0 40px}
+  .hostbar{background:#fff3f3;border:1px solid #f3c9c9;color:#b00000;padding:9px 13px;border-radius:9px;font-size:13px;font-weight:600;margin-bottom:12px}
+  .tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:4px 0 10px}
+  .tools button{border:1px solid var(--line);background:#fff;color:var(--navy);padding:7px 13px;border-radius:8px;cursor:pointer;font-weight:600;font-family:var(--body);font-size:13px}
+  .tools button.red{background:#b00000;color:#fff;border-color:#b00000}
+  .tools input{width:80px;padding:6px 8px}
+  .tbl{width:100%;border-collapse:collapse;font-size:13px}
+  .tbl th,.tbl td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  .tbl th{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+  .tbl .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:middle}
+  .tbl button{border:1px solid var(--line);background:#fff;color:var(--muted);width:22px;height:22px;border-radius:50%;cursor:pointer;line-height:1}
+  .scroll{overflow-x:auto}
+  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:10px}
+  .grp{border:1px solid var(--line);border-top:5px solid var(--c);border-radius:10px;padding:10px 12px;background:#fff}
+  .grp h5{margin:0 0 6px;font-family:var(--display);font-size:15px;color:var(--navy)}
+  .grp ol{margin:0;padding-left:20px;font-size:13px}
+  .grp .got{color:var(--muted);font-size:11.5px}
+  .rule{font-size:12.5px;color:var(--muted);margin:4px 0 0}
+  @media(max-width:760px){ .top{grid-template-columns:1fr} .map{max-width:360px;margin:0 auto} .row{grid-template-columns:1fr} h1{font-size:23px} .bar{grid-template-columns:110px 1fr 36px} }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="tag">OPERA WORKSHOP · ENGLISH SESSION · 27–29 OCTOBER 2026</div>
+    <h1>Choose your study area</h1>
+    <p class="sub">From Day 2 afternoon and all of Day 3, you work in a subgroup on one region. Choose your first and second preferred regions.</p>
+  </div>
+</header>
+<div class="teal"></div>
+<div class="wrap">
+  <div class="prompt">Tap the regions in order of preference: <b>first</b> the one you want most, then your <b>second</b> choice. No previous knowledge of the region is needed — pick one close to your work, or one you would like to discover.</div>
+  <div class="closedmsg" id="closedmsg">The choice is now closed. The organisers will announce the groups.</div>
+
+  <div class="top">
+    <div>
+      <svg class="map" viewBox="0 0 340 370" role="img" aria-label="Choose your study area"><rect width="340" height="370" fill="var(--sea)"/><path d="M85.0,125.8L65.3,111.0L63.8,105.5L57.1,98.9L55.8,95.6L49.6,92.4L46.9,89.1L45.8,84.2L46.4,82.0L44.4,78.1L41.9,76.4L44.1,75.4L47.7,69.3L47.3,66.6L49.3,59.5L48.6,49.5L44.7,45.0L45.1,40.6L48.7,36.6L50.1,31.4L54.6,27.4L57.8,18.7L61.1,16.9L64.3,11.8L66.9,9.8L71.6,9.3L82.1,0.0L340.0,0.0L340.0,61.7L336.1,56.6L334.7,52.6L329.0,48.3L325.7,43.5L325.3,37.1L322.5,31.6L317.4,28.6L314.7,22.0L305.7,9.7L303.2,9.7L304.8,3.2L304.6,2.5L304.1,1.2L304.6,2.5L299.6,11.8L295.7,7.9L291.6,1.2L300.5,19.3L308.5,30.4L307.5,31.2L307.6,34.5L314.3,40.0L317.4,56.9L322.1,60.0L326.3,70.4L340.0,81.8L340.0,155.1L337.9,158.4L331.3,162.9L330.6,166.4L328.0,171.7L326.0,173.4L323.7,179.5L324.0,182.4L327.2,184.2L325.9,192.4L332.4,203.8L333.9,223.5L332.4,227.0L327.3,233.6L317.1,237.9L303.9,248.9L303.5,252.5L306.9,260.7L307.8,260.5L307.3,270.6L292.9,278.6L293.3,280.7L294.6,281.1L291.0,293.8L286.6,297.0L280.3,305.7L267.3,316.1L259.5,318.3L258.9,319.7L242.9,319.3L230.4,324.0L228.1,324.1L221.9,320.7L219.6,313.1L221.2,312.1L221.1,308.3L206.1,285.5L202.0,269.3L201.3,260.6L196.8,254.4L193.0,245.2L189.0,240.3L188.9,229.0L192.5,217.7L198.2,210.2L198.4,203.7L194.4,195.8L196.2,192.8L189.6,175.2L177.0,160.7L174.0,155.6L177.5,144.9L176.5,144.2L179.0,134.6L177.0,131.3L174.7,130.5L172.4,127.5L172.5,126.1L163.5,128.8L159.5,128.7L155.2,121.9L151.6,118.6L139.3,119.3L120.2,126.4L106.8,124.2L100.8,125.0L92.4,128.3L85.0,125.8Z" fill="var(--land)" stroke="var(--coast)" stroke-width="0.8"/><g class="mbox" data-area="1" tabindex="-1"><rect x="25.0" y="25.0" width="30.0" height="55.0" rx="3" fill="#D9473A" fill-opacity=".28" stroke="#D9473A" stroke-width="2.2"/><circle class="mbadge" cx="17.0" cy="13.0" r="11" fill="#D9473A"/><text x="17.0" y="18.0" text-anchor="middle" class="mnum">1</text></g><g class="mbox" data-area="2" tabindex="-1"><rect x="140.0" y="117.5" width="50.0" height="57.5" rx="3" fill="#1F9D57" fill-opacity=".28" stroke="#1F9D57" stroke-width="2.2"/><circle class="mbadge" cx="122.0" cy="192.0" r="11" fill="#1F9D57"/><text x="122.0" y="197.0" text-anchor="middle" class="mnum">2</text></g><g class="mbox" data-area="3" tabindex="-1"><rect x="205.0" y="300.0" width="85.0" height="55.0" rx="3" fill="#7E44A8" fill-opacity=".28" stroke="#7E44A8" stroke-width="2.2"/><circle class="mbadge" cx="305.0" cy="286.0" r="11" fill="#7E44A8"/><text x="305.0" y="291.0" text-anchor="middle" class="mnum">3</text></g><circle cx="44.8" cy="45.4" r="2.4" fill="#17203A"/><circle cx="50.1" cy="59.5" r="2.4" fill="#17203A"/><circle cx="42.8" cy="76.5" r="2.4" fill="#17203A"/><circle cx="173.9" cy="153.6" r="2.4" fill="#17203A"/><circle cx="189.3" cy="173.9" r="2.4" fill="#17203A"/><circle cx="222.4" cy="321.8" r="2.4" fill="#17203A"/><circle cx="269.5" cy="315.1" r="2.4" fill="#17203A"/></svg>
+    </div>
+    <div class="areas" id="areas">
+    <article class="area" data-area="1" style="--c:#D9473A">
+      <div class="ahead"><span class="num">1</span>
+        <div><h3>Mauritania / Senegal</h3><p class="short">Canary upwelling</p></div>
+        <span class="rankbadge" aria-live="polite"></span></div>
+      <p class="hook">Cold, rich water along one of the world’s great fishing coasts.</p>
+      <ul>
+        <li>Trade winds pull deep, cold water to the surface: coastal upwelling, eddies and 48-hour inertial loops.</li>
+        <li><b>Day 2</b> — The thermocline off Cap Blanc and how sea level follows it.</li>
+        <li><b>Day 3</b> — Forecasts for fisheries in Nouakchott and Nouadhibou · a pirogue adrift · a marine-heatwave watch.</li>
+      </ul>
+      <p class="places"><b>Places:</b> Nouadhibou · Nouakchott · Dakar</p>
+      <button type="button" class="pick">Choose</button>
+    </article>
+    <article class="area" data-area="2" style="--c:#1F9D57">
+      <div class="ahead"><span class="num">2</span>
+        <div><h3>Gulf of Guinea — east</h3><p class="short">Equator, monsoon and rivers</p></div>
+        <span class="rankbadge" aria-live="polite"></span></div>
+      <p class="hook">The equatorial ocean, monsoon winds and the outflow of great rivers.</p>
+      <ul>
+        <li>Fast, straight coastal currents; at the equator the Earth’s rotation barely acts — no inertial loops.</li>
+        <li><b>Day 2</b> — Sea level and the thermocline across the equator (section at 6°E).</li>
+        <li><b>Day 3</b> — Forecasts for port and offshore operations at Port-Gentil · a person overboard off Cap Lopez · a heatwave watch.</li>
+      </ul>
+      <p class="places"><b>Places:</b> Bight of Biafra · Port-Gentil · Pointe-Noire</p>
+      <button type="button" class="pick">Choose</button>
+    </article>
+    <article class="area" data-area="3" style="--c:#7E44A8">
+      <div class="ahead"><span class="num">3</span>
+        <div><h3>Agulhas</h3><p class="short">One of the fastest currents on Earth</p></div>
+        <span class="rankbadge" aria-live="polite"></span></div>
+      <p class="hook">A current of up to 2 m/s that sheds giant eddies into the Atlantic.</p>
+      <ul>
+        <li>A western boundary current: deep eddies, wind against current and dangerous seas. Southern Hemisphere — the seasons are reversed.</li>
+        <li><b>Day 2</b> — Sea level, eddy energy and a section across the Agulhas retroflection.</li>
+        <li><b>Day 3</b> — Forecasts for shipping on the East London route · a seafarer overboard · heatwaves below the surface.</li>
+      </ul>
+      <p class="places"><b>Places:</b> Cape Point · Mossel Bay · East London</p>
+      <button type="button" class="pick">Choose</button>
+    </article></div>
+  </div>
+
+  <form id="f" autocomplete="on">
+    <div class="row">
+      <div><label for="first">First name</label><input id="first" maxlength="40" autocomplete="given-name"></div>
+      <div><label for="last">Last name</label><input id="last" maxlength="40" autocomplete="family-name"></div>
+    </div>
+    <div class="row">
+      <div><label for="gender">Gender</label><select id="gender"><option value="" disabled selected>Select…</option><option>Woman</option><option>Man</option><option>Non-binary</option><option>Prefer not to say</option></select></div>
+      <div><label for="country">Country (optional)</label><input id="country" maxlength="40" placeholder="e.g. Ghana" autocomplete="country-name"></div>
+    </div>
+    <div><label for="why">Why your first choice? (optional)</label><input id="why" maxlength="140" placeholder="One line — e.g. I work on this coast"></div>
+    <button class="send" type="submit" id="send">Send my choice</button>
+    <div class="status" id="status" role="status"></div>
+    <div class="mine" id="mine"></div>
+  </form>
+
+  <section class="panel" id="sofar" style="display:none">
+    <h4>Choices so far <span id="total" style="color:var(--muted);font-weight:600"></span></h4>
+    <div class="bars" id="bars"></div>
+    <p class="note">Only the totals are shown here. The organisers will try to give everyone their first choice while keeping the three groups balanced.</p>
+  </section>
+
+  <section class="hostzone" id="hostzone">
+    <div class="hostbar">Presenter mode — only you see this section</div>
+    <div class="panel">
+      <h4>Totals</h4>
+      <div class="scroll"><table class="tbl" id="tally"></table></div>
+    </div>
+    <div class="panel">
+      <h4>Proposed groups</h4>
+      <div class="tools">
+        <label for="cap" style="margin:0">Places per group</label><input id="cap" type="number" min="1">
+        <button type="button" id="propose">Propose groups</button>
+        <button type="button" id="csv">Download CSV</button>
+        <button type="button" id="toggle"></button>
+        <button type="button" class="red" id="clear">Delete all choices</button>
+      </div>
+      <p class="rule">Rule: in the order the choices arrived, each person gets their 1st choice if there is room, otherwise their 2nd, otherwise their 3rd.</p>
+      <div class="groups" id="groups"></div>
+    </div>
+    <div class="panel">
+      <h4>All choices</h4>
+      <div class="scroll"><table class="tbl" id="all"></table></div>
+    </div>
+  </section>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script>
+(() => {
+  const CONFIG = {
+      "apiKey": "AIzaSyCivtQ9DP8EpVw1oZyIH_1FQ6et9subDXM",
+      "authDomain": "opera-webinars.firebaseapp.com",
+      "databaseURL": "https://opera-webinars-default-rtdb.firebaseio.com",
+      "projectId": "opera-webinars",
+      "storageBucket": "opera-webinars.firebasestorage.app",
+      "messagingSenderId": "582276365578",
+      "appId": "1:582276365578:web:89688ceb06c6bc87334ef3"
+};
+  const ROOM = "groups-en-workshop";
+  const L = {"rank_words": ["1st choice", "2nd choice"], "choose": "Choose", "remove": "Remove", "notyet": "not chosen yet", "send": "Send my choice", "update": "Update my choice", "sending": "Sending…", "sent": "Thank you — your choice is recorded. You can change it until the organisers close the choice.", "already": "Your choice is recorded:", "change": "You can change it below and send again.", "need_name": "Please write your first and last name.", "need_gender": "Please select your gender.", "need_rank": "Please choose your first and second regions.", "err": "Could not connect. Check your internet and reload the page.", "people": "participants", "firsts": "first choices", "h_cols": ["#", "Name", "Gender", "Country", "1st", "2nd", "Why", "Time", ""], "h_points": "points (2 / 1)", "h_del": "Delete this choice?", "h_none": "No choices yet.", "h_close": "Close the choice", "h_open": "Reopen the choice", "h_got": ["got 1st choice", "got 2nd choice"], "h_got_other": "assigned to balance groups", "h_clear_confirm": "Delete ALL choices? This cannot be undone."};
+  const AREAS = {"1": {"name": "Mauritania / Senegal", "color": "#D9473A"}, "2": {"name": "Gulf of Guinea — east", "color": "#1F9D57"}, "3": {"name": "Agulhas", "color": "#7E44A8"}};            // number -> {name, color}
+  const KEYS = ['1', '2', '3'];
+  const HOST = location.hash.toLowerCase().includes('host');
+  const CID = (function(){ try { let c = localStorage.getItem('opera-cid'); if(!c){ c = 'c-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10); localStorage.setItem('opera-cid', c); } return c; } catch(e){ return 'c-' + Math.random().toString(36).slice(2,10); } })();
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  // ---------------- ranking (tap in order of preference) ----------------
+  let rank = [];                       // e.g. ['3', '1', '2']
+  function setRank(r){
+    rank = r.slice(0, 2);
+    draw();
+  }
+  function tap(k){
+    if (closed) return;
+    const i = rank.indexOf(k);
+    if (i >= 0) setRank(rank.filter(x => x !== k && rank.indexOf(x) < i));   // remove it and every later choice
+    else if (rank.length < 2) setRank([...rank, k]);
+  }
+  function draw(){
+    $$('.area').forEach(a => {
+      const k = a.dataset.area, i = rank.indexOf(k);
+      a.classList.toggle('ranked', i >= 0);
+      a.querySelector('.rankbadge').textContent = i >= 0 ? L.rank_words[i] : '';
+      a.querySelector('.pick').textContent = i >= 0 ? L.remove : L.choose;
+      a.querySelector('.pick').disabled = closed;
+    });
+    $$('.mbox').forEach(g => g.classList.toggle('on', rank.includes(g.dataset.area)));
+  }
+  $$('.area .pick').forEach(b => b.addEventListener('click', () => tap(b.closest('.area').dataset.area)));
+  $$('.mbox').forEach(g => g.addEventListener('click', () => tap(g.dataset.area)));
+
+  // ---------------- Firebase ----------------
+  let db = null, choices = null, settings = null, closed = false, all = {};
+  try {
+    firebase.initializeApp(CONFIG);
+    db = firebase.database();
+    choices = db.ref('rooms/' + ROOM + '/choices');
+    settings = db.ref('rooms/' + ROOM + '/settings');
+  } catch (e) { console.error('[OPERA groups] init failed', e); $('#status').textContent = L.err; $('#status').className = 'status bad'; }
+
+  try { const f=localStorage.getItem('opera-first'); if(f) $('#first').value=f; const l=localStorage.getItem('opera-last'); if(l) $('#last').value=l; const g=localStorage.getItem('opera-gender'); if(g) $('#gender').value=g; } catch(e){}
+  let typing = null;                   // update "your choice is recorded" while the name is typed (not on blur: that would move the button mid-click)
+  ['#first','#last'].forEach(s => $(s).addEventListener('input', () => { clearTimeout(typing); typing = setTimeout(showMine, 300); }));
+
+  $('#f').addEventListener('submit', e => {
+    e.preventDefault();
+    const st = $('#status');
+    if (closed) return;
+    if (!choices) { st.textContent = L.err; st.className = 'status bad'; return; }
+    const firstName = $('#first').value.trim(), lastName = $('#last').value.trim(), gender = $('#gender').value;
+    const name = (firstName + ' ' + lastName).trim();
+    if (rank.length < 2) { st.textContent = L.need_rank; st.className = 'status bad'; return; }
+    if (!firstName || !lastName) { st.textContent = L.need_name; st.className = 'status bad'; $('#first').focus(); return; }
+    if (!gender) { st.textContent = L.need_gender; st.className = 'status bad'; $('#gender').focus(); return; }
+    try { localStorage.setItem('opera-first', firstName); localStorage.setItem('opera-last', lastName); localStorage.setItem('opera-gender', gender); } catch(e){}
+    st.textContent = L.sending; st.className = 'status';
+    const key = CID + '_' + name.toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40);
+    choices.child(key).set({ name, firstName, lastName, gender, cid: CID, country: $('#country').value.trim(), why: $('#why').value.trim(),
+                             first: rank[0], second: rank[1], ts: firebase.database.ServerValue.TIMESTAMP })
+      .then(() => { st.textContent = L.sent; st.className = 'status ok'; })
+      .catch(err => { console.error(err); st.textContent = L.err; st.className = 'status bad'; });
+  });
+
+  function showMine(){
+    const own = Object.values(all).filter(v => v && v.cid === CID).sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const m = own[0], box = $('#mine');
+    if (!m) { box.style.display = 'none'; $('#send').textContent = L.send; return; }
+    box.style.display = 'block';
+    box.textContent = L.already + ' 1 → ' + AREAS[m.first].name + ' · 2 → ' + AREAS[m.second].name + '. ' + L.change;
+    $('#send').textContent = L.update;
+    if (!$('#first').value && m.firstName) $('#first').value = m.firstName;
+    if (!$('#last').value && m.lastName) $('#last').value = m.lastName;
+    if (!$('#gender').value && m.gender) $('#gender').value = m.gender;
+    if (!rank.length) { setRank([m.first, m.second].filter(Boolean)); if (!$('#country').value) $('#country').value = m.country || ''; if (!$('#why').value) $('#why').value = m.why || ''; }
+  }
+
+  function list(){ return Object.entries(all).map(([k, v]) => ({ k, ...v })).filter(x => AREAS[x.first]).sort((a, b) => (a.ts || 0) - (b.ts || 0)); }
+
+  function drawBars(){
+    const items = list(), n = items.length;
+    $('#total').textContent = n ? '· ' + n + ' ' + L.people : '';
+    $('#bars').innerHTML = '';
+    KEYS.forEach(k => {
+      const c = items.filter(x => x.first === k).length;
+      const row = document.createElement('div'); row.className = 'bar';
+      row.innerHTML = '<span></span><div class="track"><div class="fill"></div></div><span class="n"></span>';
+      row.children[0].textContent = k + ' — ' + AREAS[k].name;
+      row.querySelector('.fill').style.background = AREAS[k].color;
+      row.querySelector('.fill').style.width = n ? (100 * c / n) + '%' : '0';
+      row.children[2].textContent = c;
+      row.title = c + ' ' + L.firsts;
+      $('#bars').appendChild(row);
+    });
+  }
+
+  // ---------------- presenter view (#host) ----------------
+  function dot(k){ return '<span class="dot" style="background:' + AREAS[k].color + '"></span>'; }
+  function txt(s){ const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function fmt(ts){ try { return new Date(ts).toLocaleString(); } catch(e){ return ''; } }
+
+  function drawHost(){
+    if (!HOST) return;
+    const items = list();
+    // totals
+    let h = '<tr><th></th><th>1st</th><th>2nd</th><th>' + L.h_points + '</th></tr>';
+    KEYS.forEach(k => {
+      const c = ['first', 'second'].map(p => items.filter(x => x[p] === k).length);
+      h += '<tr><td>' + dot(k) + k + ' — ' + txt(AREAS[k].name) + '</td><td>' + c[0] + '</td><td>' + c[1] + '</td><td><b>' + (2 * c[0] + c[1]) + '</b></td></tr>';
+    });
+    $('#tally').innerHTML = h;
+    // all choices
+    if (!items.length) { $('#all').innerHTML = '<tr><td>' + L.h_none + '</td></tr>'; }
+    else {
+      let t = '<tr>' + L.h_cols.map(c => '<th>' + c + '</th>').join('') + '</tr>';
+      items.forEach((x, i) => {
+        t += '<tr><td>' + (i + 1) + '</td><td>' + txt(x.name) + '</td><td>' + txt(x.gender) + '</td><td>' + txt(x.country) + '</td>' +
+             ['first', 'second'].map(p => '<td>' + dot(x[p]) + x[p] + '</td>').join('') +
+             '<td>' + txt(x.why) + '</td><td>' + txt(fmt(x.ts)) + '</td><td><button data-k="' + x.k + '" title="' + L.h_del + '">×</button></td></tr>';
+      });
+      $('#all').innerHTML = t;
+      $$('#all button[data-k]').forEach(b => b.onclick = () => { if (confirm(L.h_del)) choices.child(b.dataset.k).remove(); });
+    }
+    if (!$('#cap').value) $('#cap').value = Math.max(1, Math.ceil(items.length / 3));
+    $('#toggle').textContent = closed ? L.h_open : L.h_close;
+  }
+
+  function propose(){
+    const items = list(), cap = Math.max(1, parseInt($('#cap').value, 10) || 1);
+    const groups = { '1': [], '2': [], '3': [] };
+    items.forEach(x => {
+      const prefs = [x.first, x.second];
+      let j = prefs.findIndex(k => groups[k].length < cap);
+      if (j >= 0) { groups[prefs[j]].push({ x, j }); }
+      else { const k = KEYS.reduce((a, b) => groups[a].length <= groups[b].length ? a : b); groups[k].push({ x, j: prefs.indexOf(k) }); }
+    });
+    $('#groups').innerHTML = '';
+    KEYS.forEach(k => {
+      const g = document.createElement('div'); g.className = 'grp'; g.style.setProperty('--c', AREAS[k].color);
+      g.innerHTML = '<h5>' + k + ' — ' + txt(AREAS[k].name) + ' (' + groups[k].length + ')</h5><ol></ol>';
+      groups[k].forEach(({ x, j }) => { const li = document.createElement('li'); li.innerHTML = txt(x.name) + (x.country ? ' <span class="got">(' + txt(x.country) + ')</span>' : '') + ' <span class="got">· ' + ((j >= 0 && j < L.h_got.length) ? L.h_got[j] : L.h_got_other) + '</span>'; g.querySelector('ol').appendChild(li); });
+      $('#groups').appendChild(g);
+    });
+    return groups;
+  }
+
+  function csv(){
+    const groups = propose(), assigned = {};
+    KEYS.forEach(k => groups[k].forEach(({ x }) => assigned[x.k] = k));
+    const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+    const rows = [['order', 'first_name', 'last_name', 'gender', 'country', 'first', 'second', 'why', 'time', 'proposed_group']];
+    list().forEach((x, i) => rows.push([i + 1, x.firstName || '', x.lastName || '', x.gender || '', x.country, x.first + ' ' + AREAS[x.first].name, x.second + ' ' + AREAS[x.second].name,
+                                         x.why, fmt(x.ts), assigned[x.k] + ' ' + AREAS[assigned[x.k]].name]));
+    const blob = new Blob(['﻿' + rows.map(r => r.map(q).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = ROOM + '.csv'; a.click();
+  }
+
+  if (HOST) {
+    $('#hostzone').style.display = 'block';
+    $('#sofar').style.display = 'block';
+    $('#propose').onclick = propose;
+    $('#csv').onclick = csv;
+    $('#toggle').onclick = () => settings && settings.child('closed').set(!closed);
+    $('#clear').onclick = () => { if (choices && confirm(L.h_clear_confirm)) choices.remove(); };
+  }
+
+  if (choices) choices.on('value', snap => { all = snap.val() || {}; drawBars(); showMine(); drawHost(); },
+                           err => { console.error(err); $('#status').textContent = L.err; $('#status').className = 'status bad'; });
+  if (settings) settings.on('value', snap => {
+    closed = !!(snap.val() || {}).closed;
+    $('#closedmsg').style.display = closed ? 'block' : 'none';
+    $('#send').disabled = closed;
+    draw(); drawHost();
+  });
+  draw(); drawBars();
+})();
+</script>
+</body>
+</html>
